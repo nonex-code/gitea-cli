@@ -12,15 +12,15 @@ import (
 
 var issueCmd = &cobra.Command{
 	Use:   "issue",
-	Short: "Issue 管理",
+	Short: "Manage issues",
 	Example: `  gitea-cli issue list owner/repo --json
   gitea-cli issue info owner/repo 1
-  gitea-cli issue create owner/repo "标题" --body "内容"`,
+  gitea-cli issue create owner/repo "title" --body "content"`,
 }
 
 var issueListCmd = &cobra.Command{
 	Use:     "list <owner>/<repo>",
-	Short:   "列出仓库的 Issue",
+	Short:   "List issues in a repository",
 	Example: `  gitea-cli issue list owner/repo --state open --json`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -33,7 +33,7 @@ var issueListCmd = &cobra.Command{
 			State: gitea.StateType(state),
 		})
 		if err != nil {
-			fail("获取 Issue 列表失败: %v", err)
+			fail("failed to list issues: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
@@ -42,7 +42,7 @@ var issueListCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "#\t标题\t状态\t作者")
+		fmt.Fprintln(w, "#\tTitle\tState\tAuthor")
 		for _, i := range issues {
 			fmt.Fprintf(w, "#%d\t%s\t%s\t%s\n", i.Index, i.Title, i.State, i.Poster.UserName)
 		}
@@ -51,8 +51,8 @@ var issueListCmd = &cobra.Command{
 }
 
 var issueInfoCmd = &cobra.Command{
-	Use:     "info <owner>/<repo> <编号>",
-	Short:   "查看 Issue 详情",
+	Use:     "info <owner>/<repo> <number>",
+	Short:   "Show issue details",
 	Example: `  gitea-cli issue info owner/repo 1 --json`,
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -61,12 +61,12 @@ var issueInfoCmd = &cobra.Command{
 
 		index, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
-			fail("无效的 Issue 编号: %s", args[1])
+			fail("invalid issue number: %s", args[1])
 		}
 
 		issue, _, err := cli.GetIssue(owner, repo, index)
 		if err != nil {
-			fail("获取 Issue 失败: %v", err)
+			fail("failed to get issue: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
@@ -75,17 +75,17 @@ var issueInfoCmd = &cobra.Command{
 		}
 
 		fmt.Printf("#%d %s\n", issue.Index, issue.Title)
-		fmt.Printf("状态:   %s\n", issue.State)
-		fmt.Printf("作者:   %s\n", issue.Poster.UserName)
+		fmt.Printf("State:     %s\n", issue.State)
+		fmt.Printf("Author:    %s\n", issue.Poster.UserName)
 		if len(issue.Assignees) > 0 {
 			names := make([]string, 0, len(issue.Assignees))
 			for _, a := range issue.Assignees {
 				names = append(names, a.UserName)
 			}
-			fmt.Printf("指派:   %v\n", names)
+			fmt.Printf("Assignees: %v\n", names)
 		}
-		fmt.Printf("创建:   %s\n", issue.Created.Format("2006-01-02 15:04:05"))
-		fmt.Printf("URL:    %s\n", issue.HTMLURL)
+		fmt.Printf("Created:   %s\n", issue.Created.Format("2006-01-02 15:04:05"))
+		fmt.Printf("URL:       %s\n", issue.HTMLURL)
 		if issue.Body != "" {
 			fmt.Printf("\n%s\n", issue.Body)
 		}
@@ -93,9 +93,9 @@ var issueInfoCmd = &cobra.Command{
 }
 
 var issueCreateCmd = &cobra.Command{
-	Use:     "create <owner>/<repo> <标题>",
-	Short:   "创建 Issue",
-	Example: `  gitea-cli issue create owner/repo "标题" --body "内容"`,
+	Use:     "create <owner>/<repo> <title>",
+	Short:   "Create an issue",
+	Example: `  gitea-cli issue create owner/repo "title" --body "content"`,
 	Args:    cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		owner, repo := splitRepo(args[0])
@@ -116,19 +116,19 @@ var issueCreateCmd = &cobra.Command{
 			Body:  body,
 		})
 		if err != nil {
-			fail("创建 Issue 失败: %v", err)
+			fail("failed to create issue: %v", err)
 		}
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
 			printJSON(issue)
 			return
 		}
-		fmt.Printf("✓ Issue 已创建: #%d %s\n", issue.Index, issue.Title)
+		fmt.Printf("✓ Issue created: #%d %s\n", issue.Index, issue.Title)
 	},
 }
 
 var issueCloseCmd = &cobra.Command{
-	Use:     "close <owner>/<repo> <编号>",
-	Short:   "关闭 Issue",
+	Use:     "close <owner>/<repo> <number>",
+	Short:   "Close an issue",
 	Example: `  gitea-cli issue close owner/repo 1`,
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -137,7 +137,7 @@ var issueCloseCmd = &cobra.Command{
 
 		index, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
-			fail("无效的 Issue 编号: %s", args[1])
+			fail("invalid issue number: %s", args[1])
 		}
 
 		state := gitea.StateClosed
@@ -145,15 +145,15 @@ var issueCloseCmd = &cobra.Command{
 			State: &state,
 		})
 		if err != nil {
-			fail("关闭 Issue 失败: %v", err)
+			fail("failed to close issue: %v", err)
 		}
-		printSuccess(fmt.Sprintf("✓ Issue #%d 已关闭", index), map[string]interface{}{"index": index, "state": "closed"})
+		printSuccess(fmt.Sprintf("✓ Issue #%d closed", index), map[string]interface{}{"index": index, "state": "closed"})
 	},
 }
 
 var issueReopenCmd = &cobra.Command{
-	Use:     "reopen <owner>/<repo> <编号>",
-	Short:   "重新打开 Issue",
+	Use:     "reopen <owner>/<repo> <number>",
+	Short:   "Reopen an issue",
 	Example: `  gitea-cli issue reopen owner/repo 1`,
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -162,7 +162,7 @@ var issueReopenCmd = &cobra.Command{
 
 		index, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
-			fail("无效的 Issue 编号: %s", args[1])
+			fail("invalid issue number: %s", args[1])
 		}
 
 		state := gitea.StateOpen
@@ -170,15 +170,15 @@ var issueReopenCmd = &cobra.Command{
 			State: &state,
 		})
 		if err != nil {
-			fail("重新打开 Issue 失败: %v", err)
+			fail("failed to reopen issue: %v", err)
 		}
-		printSuccess(fmt.Sprintf("✓ Issue #%d 已重新打开", index), map[string]interface{}{"index": index, "state": "open"})
+		printSuccess(fmt.Sprintf("✓ Issue #%d reopened", index), map[string]interface{}{"index": index, "state": "open"})
 	},
 }
 
 var issueDeleteCmd = &cobra.Command{
-	Use:     "delete <owner>/<repo> <编号>",
-	Short:   "删除 Issue",
+	Use:     "delete <owner>/<repo> <number>",
+	Short:   "Delete an issue",
 	Example: `  gitea-cli issue delete owner/repo 1 --yes`,
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -187,28 +187,28 @@ var issueDeleteCmd = &cobra.Command{
 
 		index, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
-			fail("无效的 Issue 编号: %s", args[1])
+			fail("invalid issue number: %s", args[1])
 		}
 
 		confirmDelete(fmt.Sprintf("Issue #%d (%s)", index, args[0]), func() {
 			if _, err := cli.DeleteIssue(owner, repo, index); err != nil {
-				fail("删除 Issue 失败: %v", err)
+				fail("failed to delete issue: %v", err)
 			}
-			printSuccess(fmt.Sprintf("✓ Issue #%d 已删除", index), map[string]interface{}{"index": index})
+			printSuccess(fmt.Sprintf("✓ Issue #%d deleted", index), map[string]interface{}{"index": index})
 		})
 	},
 }
 
 var issueCommentCmd = &cobra.Command{
 	Use:   "comment",
-	Short: "Issue 评论管理",
+	Short: "Manage issue comments",
 	Example: `  gitea-cli issue comment list owner/repo 1
-  gitea-cli issue comment add owner/repo 1 "评论内容"`,
+  gitea-cli issue comment add owner/repo 1 "comment text"`,
 }
 
 var issueCommentListCmd = &cobra.Command{
-	Use:     "list <owner>/<repo> <编号>",
-	Short:   "列出 Issue 的评论",
+	Use:     "list <owner>/<repo> <number>",
+	Short:   "List comments on an issue",
 	Example: `  gitea-cli issue comment list owner/repo 1 --json`,
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -217,12 +217,12 @@ var issueCommentListCmd = &cobra.Command{
 
 		index, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
-			fail("无效的 Issue 编号: %s", args[1])
+			fail("invalid issue number: %s", args[1])
 		}
 
 		comments, _, err := cli.ListIssueComments(owner, repo, index, gitea.ListIssueCommentOptions{})
 		if err != nil {
-			fail("获取评论失败: %v", err)
+			fail("failed to list comments: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
@@ -238,9 +238,9 @@ var issueCommentListCmd = &cobra.Command{
 }
 
 var issueCommentAddCmd = &cobra.Command{
-	Use:     "add <owner>/<repo> <编号> <评论内容>",
-	Short:   "添加 Issue 评论",
-	Example: `  gitea-cli issue comment add owner/repo 1 "评论内容"`,
+	Use:     "add <owner>/<repo> <number> <comment>",
+	Short:   "Add a comment to an issue",
+	Example: `  gitea-cli issue comment add owner/repo 1 "comment text"`,
 	Args:    cobra.MinimumNArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
 		owner, repo := splitRepo(args[0])
@@ -248,7 +248,7 @@ var issueCommentAddCmd = &cobra.Command{
 
 		index, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
-			fail("无效的 Issue 编号: %s", args[1])
+			fail("invalid issue number: %s", args[1])
 		}
 
 		body := ""
@@ -263,14 +263,14 @@ var issueCommentAddCmd = &cobra.Command{
 			Body: body,
 		})
 		if err != nil {
-			fail("添加评论失败: %v", err)
+			fail("failed to add comment: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
 			printJSON(comment)
 			return
 		}
-		fmt.Printf("✓ 评论已添加 (ID %d)\n", comment.ID)
+		fmt.Printf("✓ Comment added (ID %d)\n", comment.ID)
 	},
 }
 
@@ -287,8 +287,8 @@ func init() {
 	issueCommentCmd.AddCommand(issueCommentListCmd)
 	issueCommentCmd.AddCommand(issueCommentAddCmd)
 
-	issueListCmd.Flags().String("state", "open", "过滤状态 (open/closed/all)")
-	issueCreateCmd.Flags().String("body", "", "Issue 内容")
-	issueDeleteCmd.Flags().Bool("yes", false, "跳过确认直接删除")
+	issueListCmd.Flags().String("state", "open", "filter by state (open/closed/all)")
+	issueCreateCmd.Flags().String("body", "", "issue body")
+	issueDeleteCmd.Flags().Bool("yes", false, "skip confirmation and delete directly")
 
 }

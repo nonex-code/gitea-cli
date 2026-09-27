@@ -17,7 +17,7 @@ func mustClient() *client.Client {
 	cfg := loadConfig()
 	cli, err := client.New(cfg)
 	if err != nil {
-		fail("创建客户端失败: %v", err)
+		fail("failed to create client: %v", err)
 	}
 	return cli
 }
@@ -26,7 +26,7 @@ func mustClient() *client.Client {
 func splitRepo(s string) (owner, repo string) {
 	parts := strings.SplitN(s, "/", 2)
 	if len(parts) != 2 {
-		fail("仓库格式应为 <owner>/<repo>，实际为 %q", s)
+		fail("repository must be <owner>/<repo>, got %q", s)
 	}
 	return parts[0], parts[1]
 }
@@ -35,7 +35,7 @@ func splitRepo(s string) (owner, repo string) {
 func printJSON(v interface{}) {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		fail("JSON 序列化失败: %v", err)
+		fail("failed to serialize JSON: %v", err)
 	}
 	fmt.Println(string(b))
 }
@@ -69,7 +69,7 @@ func fail(format string, args ...interface{}) {
 		b, _ := json.Marshal(errObj)
 		fmt.Fprintln(os.Stderr, string(b))
 	} else {
-		fmt.Fprintf(os.Stderr, "错误: %s\n", msg)
+		fmt.Fprintf(os.Stderr, "error: %s\n", msg)
 	}
 	os.Exit(1)
 }

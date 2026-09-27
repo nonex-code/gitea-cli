@@ -9,14 +9,14 @@ import (
 
 var userCmd = &cobra.Command{
 	Use:   "user",
-	Short: "用户管理",
-	Example: `  gitea-cli user info --json       # 当前用户
+	Short: "Manage users",
+	Example: `  gitea-cli user info --json       # current user
   gitea-cli user search alice`,
 }
 
 var userInfoCmd = &cobra.Command{
 	Use:   "info [username]",
-	Short: "查看用户信息（默认查看当前用户）",
+	Short: "Show user info (defaults to the current user)",
 	Example: `  gitea-cli user info --json
   gitea-cli user info alice`,
 	Args: cobra.MaximumNArgs(1),
@@ -36,7 +36,7 @@ var userInfoCmd = &cobra.Command{
 			u, _, err = cli.GetUserInfo(username)
 		}
 		if err != nil {
-			fail("获取用户信息失败: %v", err)
+			fail("failed to get user info: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
@@ -44,18 +44,18 @@ var userInfoCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("用户名:   %s\n", u.UserName)
-		fmt.Printf("全名:     %s\n", u.FullName)
-		fmt.Printf("邮箱:     %s\n", u.Email)
-		fmt.Printf("主页:     %s\n", u.Website)
-		fmt.Printf("位置:     %s\n", u.Location)
-		fmt.Printf("简介:     %s\n", u.Description)
+		fmt.Printf("Username:    %s\n", u.UserName)
+		fmt.Printf("Full name:   %s\n", u.FullName)
+		fmt.Printf("Email:       %s\n", u.Email)
+		fmt.Printf("Website:     %s\n", u.Website)
+		fmt.Printf("Location:    %s\n", u.Location)
+		fmt.Printf("Bio:         %s\n", u.Description)
 	},
 }
 
 var userSearchCmd = &cobra.Command{
-	Use:     "search <关键字>",
-	Short:   "搜索用户",
+	Use:     "search <keyword>",
+	Short:   "Search users",
 	Example: `  gitea-cli user search alice --json`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -65,7 +65,7 @@ var userSearchCmd = &cobra.Command{
 			KeyWord: args[0],
 		})
 		if err != nil {
-			fail("搜索用户失败: %v", err)
+			fail("failed to search users: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {

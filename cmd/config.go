@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
@@ -14,13 +15,13 @@ import (
 
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "配置 Gitea 服务器信息与凭据",
-	Long:  "配置 Gitea 服务器地址、用户名，并通过 git 密钥箱存储凭据。",
+	Short: "Configure Gitea server info and credentials",
+	Long:  "Configure the Gitea server URL and username, and store credentials via the git keyring.",
 }
 
 var configInitCmd = &cobra.Command{
 	Use:   "init",
-	Short: "初始化配置并存储凭据到 git 密钥箱",
+	Short: "Initialize config and store credentials in the git keyring",
 	Long: `Initialize configuration and store credentials.
 
 Two modes are supported:
@@ -67,18 +68,18 @@ never written to the config file.`,
 				}
 			} else {
 				if cfg.URL == "" {
-					fmt.Print("Gitea 服务器地址 (如 https://gitea.example.com): ")
+					fmt.Print("Gitea server URL (e.g. https://gitea.example.com): ")
 					fmt.Scanln(&cfg.URL)
 				}
 				if cfg.Username == "" {
-					fmt.Print("用户名: ")
+					fmt.Print("Username: ")
 					fmt.Scanln(&cfg.Username)
 				}
 			}
 		}
 
 		if cfg.URL == "" || cfg.Username == "" {
-			fail("服务器地址和用户名不能为空，请通过 --url/--username 参数或环境变量提供")
+			fail("server URL and username are required; provide them via --url/--username or environment variables")
 		}
 
 		// Read token: prefer --token flag, then --token-stdin (from stdin), finally interactive
@@ -89,23 +90,30 @@ never written to the config file.`,
 		case tokenStdin:
 			b, err := readAllStdin()
 			if err != nil {
-				fail("从 stdin 读取 token 失败: %v", err)
+				fail("failed to read token from stdin: %v", err)
 			}
 			token = strings.TrimSpace(b)
 		default:
 			if !termIsTTY() {
-				fail("非交互环境需要显式提供 token，请使用 --token 或 --token-stdin 参数")
+				fail("non-interactive environment requires an explicit token; use --token or --token-stdin")
 			}
-			fmt.Print("访问令牌 (Token，输入不可见): ")
+			fmt.Print("Access token (input hidden): ")
 			token, err = readPassword()
 			if err != nil {
-				fail("读取令牌失败: %v", err)
+				fail("failed to read token: %v", err)
 			}
 			fmt.Println()
 		}
 
 		if token == "" {
-			fail("令牌不能为空")
+			fail("token cannot be empty")
+		}
+
+		// Verify the token FIRST by making a real API call. Only store it to the
+		// keyring after it is confirmed valid, so a wrong token never overwrites
+		// good credentials.
+		if err := verifyToken(cfg.URL, cfg.Username, token); err != nil {
+			fail("token verification failed: %v", err)
 		}
 
 		// Save config (token is NOT saved; it goes to the keyring)
@@ -113,19 +121,48 @@ never written to the config file.`,
 			fail("%v", err)
 		}
 
-		// Store credentials into the git keyring
+		// Store the verified credentials into the git keyring
 		if err := credential.Store(cfg.URL, cfg.Username, token); err != nil {
 			fail("%v", err)
 		}
 
-		fmt.Printf("✓ 配置已保存到 ~/.gitea-cli/config.yaml\n")
-		fmt.Printf("✓ 凭据已存储到 git 密钥箱 (%s)\n", cfg.URL)
+		fmt.Printf("✓ Config saved to ~/.gitea-cli/config.yaml\n")
+		fmt.Printf("✓ Credentials stored and verified (%s)\n", cfg.URL)
 	},
+}
+
+// verifyToken makes a real HTTP request to the Gitea API to confirm the token
+// is valid. It distinguishes two cases:
+//   - HTTP 401: authentication failed — the username/token is wrong.
+//   - HTTP 403: authenticated but insufficient scope — the token is valid, just
+//     limited (which is an intentional minimal-permission setup).
+//
+// Only a 401 (or a network/transport error) is treated as a failure. A 403 is
+// considered success because the token itself is correct.
+func verifyToken(serverURL, username, token string) error {
+	u := strings.TrimRight(serverURL, "/") + "/api/v1/user"
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(username, token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("invalid username, password or token")
+	}
+	// 403 (insufficient scope) and 2xx (full access) both mean the token is valid.
+	return nil
 }
 
 var configShowCmd = &cobra.Command{
 	Use:   "show",
-	Short: "显示当前配置",
+	Short: "Show current configuration",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load()
 		if err != nil {
@@ -140,12 +177,12 @@ var configShowCmd = &cobra.Command{
 			})
 			return
 		}
-		fmt.Printf("服务器地址: %s\n", cfg.URL)
-		fmt.Printf("用户名:     %s\n", cfg.Username)
+		fmt.Printf("Server URL: %s\n", cfg.URL)
+		fmt.Printf("Username:   %s\n", cfg.Username)
 		if cfg.Token != "" {
-			fmt.Println("Token:      已配置 (来自配置文件)")
+			fmt.Println("Token:      configured (from config file)")
 		} else {
-			fmt.Println("Token:      未配置 (将从 git 密钥箱获取)")
+			fmt.Println("Token:      not configured (will use git keyring)")
 		}
 	},
 }
@@ -160,19 +197,19 @@ func tokenLocation(cfg *config.Config) string {
 
 var configClearCmd = &cobra.Command{
 	Use:   "clear",
-	Short: "清除密钥箱中的凭据",
+	Short: "Remove credentials from the keyring",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load()
 		if err != nil {
 			fail("%v", err)
 		}
 		if cfg.URL == "" {
-			fail("未配置服务器地址")
+			fail("server URL is not configured")
 		}
 		if err := credential.Erase(cfg.URL, cfg.Username); err != nil {
 			fail("%v", err)
 		}
-		fmt.Printf("✓ 已从密钥箱清除 %s 的凭据\n", cfg.URL)
+		fmt.Printf("✓ Credentials for %s removed from the keyring\n", cfg.URL)
 	},
 }
 
@@ -182,8 +219,8 @@ func init() {
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configClearCmd)
 
-	configInitCmd.Flags().String("url", "", "Gitea 服务器地址")
-	configInitCmd.Flags().String("username", "", "用户名")
-	configInitCmd.Flags().String("token", "", "访问令牌（不推荐，会出现在 shell 历史中）")
-	configInitCmd.Flags().Bool("token-stdin", false, "从 stdin 读取 token（推荐）")
+	configInitCmd.Flags().String("url", "", "Gitea server URL")
+	configInitCmd.Flags().String("username", "", "Username")
+	configInitCmd.Flags().String("token", "", "Access token (not recommended; appears in shell history)")
+	configInitCmd.Flags().Bool("token-stdin", false, "Read token from stdin (recommended)")
 }

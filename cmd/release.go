@@ -11,14 +11,14 @@ import (
 
 var releaseCmd = &cobra.Command{
 	Use:   "release",
-	Short: "Release 管理",
+	Short: "Manage releases",
 	Example: `  gitea-cli release list owner/repo --json
-  gitea-cli release create owner/repo v1.0.0 --note "发布说明"`,
+  gitea-cli release create owner/repo v1.0.0 --note "release notes"`,
 }
 
 var releaseListCmd = &cobra.Command{
 	Use:     "list <owner>/<repo>",
-	Short:   "列出仓库的 Release",
+	Short:   "List releases in a repository",
 	Example: `  gitea-cli release list owner/repo --json`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -27,7 +27,7 @@ var releaseListCmd = &cobra.Command{
 
 		releases, _, err := cli.ListReleases(owner, repo, gitea.ListReleasesOptions{})
 		if err != nil {
-			fail("获取 Release 列表失败: %v", err)
+			fail("failed to list releases: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
@@ -36,7 +36,7 @@ var releaseListCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "标签\t标题\t草稿\t预发布\t发布时间")
+		fmt.Fprintln(w, "Tag\tTitle\tDraft\tPrerelease\tPublished")
 		for _, r := range releases {
 			fmt.Fprintf(w, "%s\t%s\t%t\t%t\t%s\n", r.TagName, r.Title, r.IsDraft, r.IsPrerelease, r.PublishedAt.Format("2006-01-02 15:04"))
 		}
@@ -45,9 +45,9 @@ var releaseListCmd = &cobra.Command{
 }
 
 var releaseCreateCmd = &cobra.Command{
-	Use:     "create <owner>/<repo> <标签>",
-	Short:   "创建 Release",
-	Example: `  gitea-cli release create owner/repo v1.0.0 --note "发布说明"`,
+	Use:     "create <owner>/<repo> <tag>",
+	Short:   "Create a release",
+	Example: `  gitea-cli release create owner/repo v1.0.0 --note "release notes"`,
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		owner, repo := splitRepo(args[0])
@@ -72,20 +72,20 @@ var releaseCreateCmd = &cobra.Command{
 
 		r, _, err := cli.CreateRelease(owner, repo, opt)
 		if err != nil {
-			fail("创建 Release 失败: %v", err)
+			fail("failed to create release: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
 			printJSON(r)
 			return
 		}
-		fmt.Printf("✓ Release 已创建: %s (%s)\n", r.Title, r.HTMLURL)
+		fmt.Printf("✓ Release created: %s (%s)\n", r.Title, r.HTMLURL)
 	},
 }
 
 var releaseDeleteCmd = &cobra.Command{
-	Use:     "delete <owner>/<repo> <标签>",
-	Short:   "删除 Release（按标签）",
+	Use:     "delete <owner>/<repo> <tag>",
+	Short:   "Delete a release (by tag)",
 	Example: `  gitea-cli release delete owner/repo v1.0.0 --yes`,
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -94,9 +94,9 @@ var releaseDeleteCmd = &cobra.Command{
 
 		confirmDelete(fmt.Sprintf("Release %s (%s)", args[1], args[0]), func() {
 			if _, err := cli.DeleteReleaseByTag(owner, repo, args[1]); err != nil {
-				fail("删除 Release 失败: %v", err)
+				fail("failed to delete release: %v", err)
 			}
-			printSuccess(fmt.Sprintf("✓ Release %s 已删除", args[1]), map[string]interface{}{"tag": args[1]})
+			printSuccess(fmt.Sprintf("✓ Release %s deleted", args[1]), map[string]interface{}{"tag": args[1]})
 		})
 	},
 }
@@ -107,10 +107,10 @@ func init() {
 	releaseCmd.AddCommand(releaseCreateCmd)
 	releaseCmd.AddCommand(releaseDeleteCmd)
 
-	releaseCreateCmd.Flags().String("title", "", "标题（默认使用标签名）")
-	releaseCreateCmd.Flags().String("note", "", "发布说明")
-	releaseCreateCmd.Flags().String("target", "", "目标分支/提交")
-	releaseCreateCmd.Flags().Bool("draft", false, "是否草稿")
-	releaseCreateCmd.Flags().Bool("prerelease", false, "是否预发布")
-	releaseDeleteCmd.Flags().Bool("yes", false, "跳过确认直接删除")
+	releaseCreateCmd.Flags().String("title", "", "title (defaults to the tag name)")
+	releaseCreateCmd.Flags().String("note", "", "release notes")
+	releaseCreateCmd.Flags().String("target", "", "target branch/commit")
+	releaseCreateCmd.Flags().Bool("draft", false, "mark as draft")
+	releaseCreateCmd.Flags().Bool("prerelease", false, "mark as prerelease")
+	releaseDeleteCmd.Flags().Bool("yes", false, "skip confirmation and delete directly")
 }

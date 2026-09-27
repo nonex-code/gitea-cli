@@ -98,10 +98,10 @@ func Erase(serverURL, username string) error {
 	}
 	input += "\n"
 
-	cmd := exec.Command("git", "credential", "erase")
+	cmd := exec.Command("git", "credential", "reject")
 	cmd.Stdin = strings.NewReader(input)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to run git credential erase: %w", err)
+		return fmt.Errorf("failed to run git credential reject: %w", err)
 	}
 	return nil
 }

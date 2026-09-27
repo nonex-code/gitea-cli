@@ -11,7 +11,7 @@ import (
 
 var orgCmd = &cobra.Command{
 	Use:   "org",
-	Short: "组织管理",
+	Short: "Manage organizations",
 	Example: `  gitea-cli org list --json
   gitea-cli org info orgname
   gitea-cli org create neworg`,
@@ -19,7 +19,7 @@ var orgCmd = &cobra.Command{
 
 var orgListCmd = &cobra.Command{
 	Use:     "list [user]",
-	Short:   "列出组织（默认列出当前用户的组织）",
+	Short:   "List organizations (defaults to the current user's)",
 	Example: `  gitea-cli org list --json`,
 	Args:    cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -33,7 +33,7 @@ var orgListCmd = &cobra.Command{
 			orgs, _, err = cli.ListMyOrgs(gitea.ListOrgsOptions{})
 		}
 		if err != nil {
-			fail("获取组织列表失败: %v", err)
+			fail("failed to list organizations: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
@@ -42,7 +42,7 @@ var orgListCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "组织\t全名\t可见性\t描述")
+		fmt.Fprintln(w, "Organization\tFull name\tVisibility\tDescription")
 		for _, o := range orgs {
 			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", o.Name, o.FullName, o.Visibility, o.Description)
 		}
@@ -51,8 +51,8 @@ var orgListCmd = &cobra.Command{
 }
 
 var orgInfoCmd = &cobra.Command{
-	Use:     "info <组织名>",
-	Short:   "查看组织信息",
+	Use:     "info <org-name>",
+	Short:   "Show organization info",
 	Example: `  gitea-cli org info orgname --json`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -60,7 +60,7 @@ var orgInfoCmd = &cobra.Command{
 
 		o, _, err := cli.GetOrg(args[0])
 		if err != nil {
-			fail("获取组织信息失败: %v", err)
+			fail("failed to get organization info: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
@@ -68,19 +68,19 @@ var orgInfoCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("组织名: %s\n", o.Name)
-		fmt.Printf("全名:   %s\n", o.FullName)
-		fmt.Printf("可见性: %s\n", o.Visibility)
-		fmt.Printf("描述:   %s\n", o.Description)
-		fmt.Printf("网站:   %s\n", o.Website)
-		fmt.Printf("位置:   %s\n", o.Location)
+		fmt.Printf("Name:       %s\n", o.Name)
+		fmt.Printf("Full name:  %s\n", o.FullName)
+		fmt.Printf("Visibility: %s\n", o.Visibility)
+		fmt.Printf("Description: %s\n", o.Description)
+		fmt.Printf("Website:    %s\n", o.Website)
+		fmt.Printf("Location:   %s\n", o.Location)
 	},
 }
 
 var orgCreateCmd = &cobra.Command{
-	Use:     "create <组织名>",
-	Short:   "创建组织",
-	Example: `  gitea-cli org create neworg --description "描述"`,
+	Use:     "create <org-name>",
+	Short:   "Create an organization",
+	Example: `  gitea-cli org create neworg --description "desc"`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cli := mustClient()
@@ -98,44 +98,44 @@ var orgCreateCmd = &cobra.Command{
 
 		o, _, err := cli.CreateOrg(opt)
 		if err != nil {
-			fail("创建组织失败: %v", err)
+			fail("failed to create organization: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
 			printJSON(o)
 			return
 		}
-		fmt.Printf("✓ 组织已创建: %s\n", o.Name)
+		fmt.Printf("✓ Organization created: %s\n", o.Name)
 	},
 }
 
 var orgDeleteCmd = &cobra.Command{
-	Use:     "delete <组织名>",
-	Short:   "删除组织",
+	Use:     "delete <org-name>",
+	Short:   "Delete an organization",
 	Example: `  gitea-cli org delete orgname --yes`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cli := mustClient()
 
-		confirmDelete(fmt.Sprintf("组织 %s", args[0]), func() {
+		confirmDelete(fmt.Sprintf("organization %s", args[0]), func() {
 			if _, err := cli.DeleteOrg(args[0]); err != nil {
-				fail("删除组织失败: %v", err)
+				fail("failed to delete organization: %v", err)
 			}
-			printSuccess("✓ 组织 "+args[0]+" 已删除", map[string]interface{}{"org": args[0]})
+			printSuccess("✓ Organization "+args[0]+" deleted", map[string]interface{}{"org": args[0]})
 		})
 	},
 }
 
 var orgMemberCmd = &cobra.Command{
 	Use:   "member",
-	Short: "组织成员管理",
+	Short: "Manage organization members",
 	Example: `  gitea-cli org member list orgname
   gitea-cli org member add orgname username --team Owners`,
 }
 
 var orgMemberListCmd = &cobra.Command{
-	Use:     "list <组织名>",
-	Short:   "列出组织成员",
+	Use:     "list <org-name>",
+	Short:   "List organization members",
 	Example: `  gitea-cli org member list orgname --json`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -143,7 +143,7 @@ var orgMemberListCmd = &cobra.Command{
 
 		members, _, err := cli.ListOrgMembership(args[0], gitea.ListOrgMembershipOption{})
 		if err != nil {
-			fail("获取组织成员失败: %v", err)
+			fail("failed to list organization members: %v", err)
 		}
 
 		if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
@@ -152,7 +152,7 @@ var orgMemberListCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "用户名\t全名\t邮箱")
+		fmt.Fprintln(w, "Username\tFull name\tEmail")
 		for _, m := range members {
 			fmt.Fprintf(w, "%s\t%s\t%s\n", m.UserName, m.FullName, m.Email)
 		}
@@ -161,9 +161,9 @@ var orgMemberListCmd = &cobra.Command{
 }
 
 var orgMemberAddCmd = &cobra.Command{
-	Use:     "add <组织名> <用户名>",
-	Short:   "添加组织成员（通过团队）",
-	Long:    "Gitea 中组织成员需通过团队（team）添加。若组织无团队，请先创建团队。\n可用 --team 指定团队名称（默认 Owners）。",
+	Use:     "add <org-name> <username>",
+	Short:   "Add an organization member (via a team)",
+	Long:    "In Gitea, organization members must be added via a team. Create a team first if none exists.\nUse --team to specify the team name (default: Owners).",
 	Example: `  gitea-cli org member add orgname username --team Owners`,
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -171,10 +171,10 @@ var orgMemberAddCmd = &cobra.Command{
 
 		teamName, _ := cmd.Flags().GetString("team")
 
-		// 查找团队
+		// Find the team
 		teams, _, err := cli.SearchOrgTeams(args[0], &gitea.SearchTeamsOptions{})
 		if err != nil {
-			fail("获取团队列表失败: %v", err)
+			fail("failed to list teams: %v", err)
 		}
 
 		var teamID int64
@@ -185,29 +185,29 @@ var orgMemberAddCmd = &cobra.Command{
 			}
 		}
 		if teamID == 0 {
-			fail("未找到团队 %q，请先创建或检查团队名", teamName)
+			fail("team %q not found; create it or check the team name", teamName)
 		}
 
 		if _, err := cli.AddTeamMember(teamID, args[1]); err != nil {
-			fail("添加成员失败: %v", err)
+			fail("failed to add member: %v", err)
 		}
-		printSuccess(fmt.Sprintf("✓ 已添加成员 %s 到团队 %s", args[1], teamName), map[string]interface{}{"user": args[1], "team": teamName})
+		printSuccess(fmt.Sprintf("✓ Added member %s to team %s", args[1], teamName), map[string]interface{}{"user": args[1], "team": teamName})
 	},
 }
 
 var orgMemberRemoveCmd = &cobra.Command{
-	Use:     "remove <组织名> <用户名>",
-	Short:   "移除组织成员",
+	Use:     "remove <org-name> <username>",
+	Short:   "Remove an organization member",
 	Example: `  gitea-cli org member remove orgname username --yes`,
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		cli := mustClient()
 
-		confirmDelete(fmt.Sprintf("成员 %s (组织 %s)", args[1], args[0]), func() {
+		confirmDelete(fmt.Sprintf("member %s (organization %s)", args[1], args[0]), func() {
 			if _, err := cli.DeleteOrgMembership(args[0], args[1]); err != nil {
-				fail("移除成员失败: %v", err)
+				fail("failed to remove member: %v", err)
 			}
-			printSuccess("✓ 已移除成员 "+args[1], map[string]interface{}{"user": args[1]})
+			printSuccess("✓ Removed member "+args[1], map[string]interface{}{"user": args[1]})
 		})
 	},
 }
@@ -225,11 +225,11 @@ func init() {
 	orgMemberCmd.AddCommand(orgMemberAddCmd)
 	orgMemberCmd.AddCommand(orgMemberRemoveCmd)
 
-	orgCreateCmd.Flags().String("fullname", "", "组织全名")
-	orgCreateCmd.Flags().String("description", "", "组织描述")
-	orgCreateCmd.Flags().String("visibility", "", "可见性 (public/limited/private)")
-	orgDeleteCmd.Flags().Bool("yes", false, "跳过确认直接删除")
+	orgCreateCmd.Flags().String("fullname", "", "organization full name")
+	orgCreateCmd.Flags().String("description", "", "organization description")
+	orgCreateCmd.Flags().String("visibility", "", "visibility (public/limited/private)")
+	orgDeleteCmd.Flags().Bool("yes", false, "skip confirmation and delete directly")
 
-	orgMemberAddCmd.Flags().String("team", "Owners", "团队名称（用于添加成员）")
-	orgMemberRemoveCmd.Flags().Bool("yes", false, "跳过确认直接删除")
+	orgMemberAddCmd.Flags().String("team", "Owners", "team name (used when adding a member)")
+	orgMemberRemoveCmd.Flags().Bool("yes", false, "skip confirmation and delete directly")
 }
