@@ -1,0 +1,26 @@
+# Build output
+/gitea-cli
+/gitea-cli.exe
+/dist/
+
+# Go
+*.test
+*.out
+*.prof
+coverage.txt
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+!.env.example

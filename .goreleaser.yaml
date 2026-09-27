@@ -1,0 +1,69 @@
+# GoReleaser configuration for cross-platform release builds.
+# When a git tag vX.Y.Z is pushed, the workflow builds binaries for
+# multiple platforms and attaches them to a GitHub Release.
+
+version: 2
+
+project_name: gitea-cli
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+      - freebsd
+      - openbsd
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    ignore:
+      - goos: darwin
+        goarch: arm
+      - goos: windows
+        goarch: arm
+      - goos: freebsd
+        goarch: arm
+      - goos: openbsd
+        goarch: arm
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+
+release:
+  name_template: "{{ .ProjectName }} {{ .Tag }}"
+  draft: false
+  prerelease: auto
